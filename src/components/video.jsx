@@ -1,17 +1,26 @@
 import { useState } from "react"
+import { useNavigate} from 'react-router-dom'
 
 
-export const Video = ({thumbnail,views,title,description,avatar,videoFile})=>{
+export const Video = ({thumbnail,views,title,description,avatar,videoFile,vid})=>{
     const [isHover,setisHover]= useState(false)
+    const navigate = useNavigate()
+    function onClick()
+    {
+        navigate(`/videos/vid/${vid}`)
+    }
     return(
-        <div className="min-w-[300px] max-w-[300px] min-h-[300px] max-h-[300px] rounded-2xl ">
-            <div onMouseLeave={()=>setisHover(false)} onMouseEnter={()=>setisHover(true)} className="h-[65%] w-full object-center  rounded-2xl ">
+        <div onClick={onClick} className="min-w-[300px] hover:bg-[#1b1a1a] max-w-[300px] min-h-[300px] max-h-[300px] rounded-2xl ">
+            <div  onMouseLeave={()=>setisHover(false)} onMouseEnter={()=>setisHover(true)} className="h-[65%] w-full object-center  rounded-2xl ">
                {
                 isHover
                 ?<video autoPlay class="w-full object-center object-fill h-full rounded-2xl">
                     <source  src={videoFile} type="video/mp4" />
                 </video>
                 :<img  class="w-full object-center object-fill h-full rounded-2xl" src={thumbnail} />
+               }
+               {
+                console.log("veeedio id",vid)
                }
             </div>
             <div className="w-full flex h-[35%] ">

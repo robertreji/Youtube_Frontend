@@ -24,14 +24,15 @@ export default function ProfilePageUserVideos()
                             <div className="w-full overflow-y-auto overflow-x-hidden scrollbar-hide grid  grid-cols-4 gap-3 h-[88%] ">
                             {
                                 userVideoDetails
-                                ?userVideoDetails.map((video,index)=>(
-                                    <Video key={index}
+                                ?userVideoDetails.map((video)=>{
+                                    return <Video key={video._id}
+                                            vid={video._id}
                                             thumbnail={video.thumbnail}
                                             avatar={user.avatar}
                                             description={video.description}
                                             title={video.title}
                                             views={video.views}
-                                            videoFile={video.videoFile}/>))
+                                            videoFile={video.videoFile}/>})
                                 :null
                             }
                             </div>
