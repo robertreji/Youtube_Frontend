@@ -10,22 +10,20 @@ export default function Video()
     const [ownerD,setownerD]= useState({})
     const [isvideoLoaded,setvideoLoaded] =useState(false)
     const [uservideos,setuserVideoDetails] = useState([])
+    const [issubscribed,setSubscribed] = useState(false)
+    const [subcount,setSubCount]= useState(0)
     const {id} =useParams()
-    console.log("user params :",id)
+
     useEffect(()=>{
         const videodetails=async ()=>
             {
              try{
-                const details= await axios.post(
-                   "user/getVideoDetails",
-                   {videoId:id},
-                   {withCredentials:true}
-               )
-            const res = await axios.post("user/userVideos",{},{withCredentials:true})
-            setuserVideoDetails(res.data.data[0].userVideos)
-                console.log("video details:",details.data.data[0])
+               
+                const details= await axios.post("user/getVideoDetails",{videoId:id},{withCredentials:true})
                 setVdetails(details.data.data[0])
                 setownerD(details.data.data[0].ownerDetails[0])
+                const res = await axios.post("user/userVideos",{},{withCredentials:true})
+                setuserVideoDetails(res.data.data[0].userVideos)
                 setvideoLoaded(true)
                }
              catch (error) {
@@ -33,7 +31,43 @@ export default function Video()
              }
             }
             videodetails();         
-        },[])
+        },[id])
+  async function subscriptiondetails()
+            {
+                try {
+                    const subCount = await axios.post("user/getSubscriberCount",{channelId:ownerD._id},{withCredentials:true})
+                    setSubCount(subCount.data.data?.totalSubscribers)
+                    const subscribed = await axios.post("user/isSubscribed",{channelId:ownerD._id},{withCredentials:true})
+                    setSubscribed(subscribed.data.data?.isSubscribed)
+                } catch (error) {
+                    console.log(error)
+                }
+            }
+        useEffect(()=>{
+            subscriptiondetails()
+        })
+        async function subscribe()
+        {
+            const res= await axios.post(
+                   "user/subscribeToChannel",
+                   {channelId:ownerD._id},
+                   {withCredentials:true}
+               )
+            setSubscribed(true)
+           await subscriptiondetails()
+            console.log(res)
+        }
+        async function unsubscribe()
+        {
+            const res= await axios.post(
+                   "user/unsubscribeToChannel",
+                   {channelId:ownerD?._id},
+                   {withCredentials:true}
+               )
+            setSubscribed(false)
+            await subscriptiondetails()
+            console.log(res)
+        }
     return(
         <>
         <div className="flex w-[85%] rounded-2xl scrollbar-hide h-[100%]  overflow-y-auto">
@@ -41,7 +75,7 @@ export default function Video()
                 <div className="h-[65%] w-full object-center  rounded-2xl ">
                    {
                     isvideoLoaded
-                    ? <video controls  class="w-full object-center object-fill h-full rounded-2xl">
+                    ? <video controls  className="w-full object-center object-fill h-full rounded-2xl">
                         <source  src={vDetails.videoFile} type="video/mp4" />
                     </video>
                     :null
@@ -64,9 +98,12 @@ export default function Video()
                             </div>
                            <div>
                             <p className="text-white text-2xl font-bold">{ownerD.username}</p>
-                            <p className=" text-lg font-semibold">2.3m Subscribers</p>
+                            <p className=" text-lg font-thin text-gray-200">{subcount} Subscribers</p>
                            </div>
-                            <div className="bg-red-600 w-[100px] h-[30px] flex items-center justify-center rounded-2xl text-white font-bold ">Subscribe</div>
+                            {issubscribed
+                            ?<div onClick={unsubscribe} className="bg-red-300 w-[100px] h-[30px] flex items-center justify-center rounded-2xl text-white font-bold ">unSubscribe</div>
+                            :<div onClick={subscribe} className="bg-red-600 w-[100px] h-[30px] flex items-center justify-center rounded-2xl text-white font-bold ">Subscribe</div>
+                            }
                         </div>
                     </div>
                     <div className="max-w-[374px] text-white mr-10 flex gap-[20px] max-h-[45px]  w-auto h-auto">
