@@ -2,11 +2,19 @@
 import { useNavigate } from "react-router-dom"
 import { userStore } from "../../userStore/user.Store"
 import UploadFiles from "../fileUploads/videoUploader"
+import axios from '../axios'
 
 export default function Navbar()
 {
     const user= userStore((state)=>state.user)
     const navigate = useNavigate((state)=>state.user)
+    const setIsLoggedIn = userStore((state)=>state.setIsLoggedIn)
+    const logOut=async()=>{
+                const res=  await axios.post("/user/logout")
+                setIsLoggedIn(false)
+                console.log("set logedin false")
+                if(res.data.statusCode) navigate("/login" ,{replace:true})    
+        }
     return (
         <div className="w-full h-full flex "> 
             <div className="flex w-1/6  h-full  items-center ml-8">
@@ -28,6 +36,7 @@ export default function Navbar()
                 </div>
             </div>
             <div className="flex w-2/6 items-center justify-end mr-10 gap-3">
+               <p onClick={logOut} className="text-white font-bold bg-red-600 rounded-3xl px-3 py-2">logout</p>
                 <UploadFiles/>
                 <img  className="h-[40px] w-[30px] cursor-pointer" src="icons/notifications.svg" alt="" />
                 <img onClick={()=>navigate("/profile")} className="h-[40px] hover:cursor-pointer w-[40px] rounded-full" src={user.avatar} alt="" />

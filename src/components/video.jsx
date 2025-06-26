@@ -1,20 +1,39 @@
 import { useState } from "react"
 import { useNavigate} from 'react-router-dom'
-
+import axios from "./axios"
 
 export const Video = ({thumbnail,views,title,description,avatar,videoFile,vid})=>{
     const [isHover,setisHover]= useState(false)
     const navigate = useNavigate()
+    const [hoverTimeout,sethoverTimeout] = useState(null)
     function onClick()
     {
         navigate(`/videos/vid/${vid}`)
     }
+    async function  updateWatchHistory()
+    {
+        const timeout = setTimeout(async()=>{
+             if(vid)
+             {
+                await axios.post(
+                   "user/updateWatchHistory",
+                   {videoId:vid},
+                   {withCredentials:true}
+               )
+               console.log("updated watch history...")
+             }
+        },3000)
+        sethoverTimeout(timeout)
+    }
+    function handleMOuseLeave(){
+        clearTimeout(hoverTimeout)
+    }
     return(
-        <div onClick={onClick} className="min-w-[300px] hover:bg-[#1b1a1a] max-w-[300px] min-h-[300px] max-h-[300px] rounded-2xl ">
+        <div  onMouseLeave={handleMOuseLeave} onMouseEnter={updateWatchHistory} onClick={onClick} className="min-w-[300px] hover:bg-[#1b1a1a] max-w-[300px] min-h-[300px] max-h-[300px] rounded-2xl ">
             <div  onMouseLeave={()=>setisHover(false)} onMouseEnter={()=>setisHover(true)} className="h-[65%] w-full object-center  rounded-2xl ">
                {
                 isHover
-                ?<video autoPlay class="w-full object-center object-fill h-full rounded-2xl">
+                ?<video autoPlay className="w-full object-center object-fill h-full rounded-2xl">
                     <source  src={videoFile} type="video/mp4" />
                 </video>
                 :<img  class="w-full object-center object-fill h-full rounded-2xl" src={thumbnail} />

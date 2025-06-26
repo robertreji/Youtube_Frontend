@@ -1,4 +1,4 @@
-import {  useEffect } from "react"
+import {  useEffect, useRef } from "react"
 import axios from '../components/axios.js'
 import Comments from "../components/Comments.jsx"
 import { VideoPage } from "../components/videoVideoPage.jsx"
@@ -6,13 +6,18 @@ import { useState } from "react"
 import { useParams } from "react-router-dom"
 export default function Video()
 {
+    const CommentRef=useRef()
+    const [hoverTimeout,sethoverTimeout] = useState(null)
     const [vDetails,setVdetails] =useState({})
     const [ownerD,setownerD]= useState({})
     const [isvideoLoaded,setvideoLoaded] =useState(false)
     const [uservideos,setuserVideoDetails] = useState([])
     const [issubscribed,setSubscribed] = useState(false)
     const [subcount,setSubCount]= useState(0)
+    const [totalLikes,setTotalLikes] = useState(0)
+    const [isLiked,setIsLiked] =useState(false)
     const {id} =useParams()
+    const [comments,setComments]= useState([])
 
     useEffect(()=>{
         const videodetails=async ()=>
@@ -22,8 +27,6 @@ export default function Video()
                 const details= await axios.post("user/getVideoDetails",{videoId:id},{withCredentials:true})
                 setVdetails(details.data.data[0])
                 setownerD(details.data.data[0].ownerDetails[0])
-                const res = await axios.post("user/userVideos",{},{withCredentials:true})
-                setuserVideoDetails(res.data.data[0].userVideos)
                 setvideoLoaded(true)
                }
              catch (error) {
@@ -32,45 +35,124 @@ export default function Video()
             }
             videodetails();         
         },[id])
-  async function subscriptiondetails()
+        useEffect(()=>{
+            if (ownerD._id){
+            async function getVideos()
+            {
+                const res = await axios.post("user/getMoreVideosFromChannel",{userId:ownerD._id},{withCredentials:true})
+                setuserVideoDetails(res.data.data[0].userVideos)
+                getAllComments()
+            }
+
+            getVideos()}
+        },[ownerD._id])
+        async function totalLikeS() {
+             const TLikes = await axios.post("user/totalLikes",{videoId:vDetails._id},{withCredentials:true})
+            setTotalLikes(TLikes.data.data.totalLikes.length)
+        }
+        async function subscriptiondetails()
             {
                 try {
                     const subCount = await axios.post("user/getSubscriberCount",{channelId:ownerD._id},{withCredentials:true})
                     setSubCount(subCount.data.data?.totalSubscribers)
                     const subscribed = await axios.post("user/isSubscribed",{channelId:ownerD._id},{withCredentials:true})
                     setSubscribed(subscribed.data.data?.isSubscribed)
+                    const LIKED = await axios.post("user/islikeVideo",{videoId:vDetails._id},{withCredentials:true})
+                    setIsLiked(LIKED.data.data?.isLiked)
+                    totalLikeS()
                 } catch (error) {
                     console.log(error)
                 }
             }
         useEffect(()=>{
-            subscriptiondetails()
+         subscriptiondetails()
         })
         async function subscribe()
         {
-            const res= await axios.post(
+             axios.post(
                    "user/subscribeToChannel",
                    {channelId:ownerD._id},
                    {withCredentials:true}
                )
             setSubscribed(true)
            await subscriptiondetails()
-            console.log(res)
+        }
+        async function likeVideo()
+        {
+            await axios.post(
+                   "user/likeVideo",
+                   {videoId:vDetails._id},
+                   {withCredentials:true}
+               )
+            await subscriptiondetails()
+            setIsLiked(true)
+            totalLikeS()
+        }
+          async function unlikeVideo()
+        {
+            await axios.post(
+                   "user/unlikeVideo",
+                   {videoId:vDetails._id},
+                   {withCredentials:true}
+               )
+            await subscriptiondetails()
+            setIsLiked(false)
+            totalLikeS()
         }
         async function unsubscribe()
         {
-            const res= await axios.post(
+             await axios.post(
                    "user/unsubscribeToChannel",
                    {channelId:ownerD?._id},
                    {withCredentials:true}
                )
             setSubscribed(false)
             await subscriptiondetails()
-            console.log(res)
         }
+
+   
+        async function getAllComments(){
+            const comments= await axios.post(
+                   "user/getAllComments",
+                   {videoId:vDetails?._id},
+                   {withCredentials:true}
+               )
+            setComments(comments.data.data.Comments[0].comment)
+        }
+
+        async function commentTovideo(){
+            const Comment = CommentRef.current.value
+            
+             await axios.post(
+                   "user/comment",
+                   {videoId:vDetails?._id,comment:Comment},
+                   {withCredentials:true}
+               )
+            getAllComments()
+        }
+        async function  updateWatchHistory()
+            {
+                const timeout = setTimeout(async()=>{
+                     if(vDetails._id)
+                     {
+                        await axios.post(
+                           "user/updateWatchHistory",
+                           {videoId:vDetails._id},
+                           {withCredentials:true}
+                       )
+                       console.log("updated watch history...")
+                     }
+                },100)
+                sethoverTimeout(timeout)
+            }
+            function handleMOuseLeave(){
+                clearTimeout(hoverTimeout)
+            }
+
+
     return(
         <>
-        <div className="flex w-[85%] rounded-2xl scrollbar-hide h-[100%]  overflow-y-auto">
+        <div onMouseLeave={handleMOuseLeave} onMouseEnter={updateWatchHistory} className="flex w-[85%] rounded-2xl scrollbar-hide h-[100%]  overflow-y-auto">
             <div className="w-[1000px] rounded-2xl   h-auto">
                 <div className="h-[65%] w-full object-center  rounded-2xl ">
                    {
@@ -107,62 +189,67 @@ export default function Video()
                         </div>
                     </div>
                     <div className="max-w-[374px] text-white mr-10 flex gap-[20px] max-h-[45px]  w-auto h-auto">
-                        <div className="max-w-[75px]  flex items-center max-h-[45px] w-auto h-auto">
-                            <div className="w-[36px]   flex justify-center items-center h-[36px]">
-                                <img  src="/icons/liked.svg" alt="like" />
-                            </div>
-                            <div className="w-[39px]  flex justify-center items-center h-[36px]">1.7K</div>
-                            </div>
-                            <div className="max-w-[67px] gap-[10px]  items-center flex max-h-[45px] w-auto h-auto">
-                                <div className="max-w-[36px] flex gap-[30px] items-center justify-center max-h-[36px] w-auto h-auto">
-                                    <img src="/icons/disLiked.svg" alt="" />
+                        <div  className="max-w-[75px]  flex items-center max-h-[45px] w-auto h-auto">
+                            {
+                                isLiked
+                                ?<div onClick={unlikeVideo} className="w-[36px]   flex justify-center items-center h-[36px]">
+                                    <img  src="/icons/likeD.svg" alt="like" />
                                 </div>
-                                <div className="max-w-[31px] max-h-[36px] w-auto flex  items-center">632</div>
-
-                            </div>
-                            <div className="max-w-[87px] gap-[10px]  flex items-center w-auto max-h-[45px] h-auto">
-                                <div className="max-w-[36px] max-h-[36px] w-auto h-auto ">
-                                    <img src="/icons/share.svg" alt="" />
+                                : <div onClick={likeVideo} className="w-[36px]   flex justify-center items-center h-[36px]">
+                                    <img  src="/icons/liked.svg" alt="like" />
                                 </div>
-                                <div className="max-w-[51px] max-h-[40px] w-auto h-auto">
+                            }
+                           
+                            <div className="w-[39px]  flex justify-center items-center h-[36px]">{totalLikes}</div>
+                        </div>
+                        <div className="max-w-[87px] gap-[10px]  flex items-center w-auto max-h-[45px] h-auto">
+                            <div className="max-w-[36px] max-h-[36px] w-auto h-auto ">
+                                <img src="/icons/share.svg" alt="" />
+                            </div>
+                            <div className="max-w-[51px] max-h-[40px] w-auto h-auto">
                                     SHARE
-                                </div>
                             </div>
-                            <div className="max-w-[77px] gap-[10px]  flex items-center max-h-[45px] w-auto h-auto">
-                                <div className="max-w-[36px] max-h-[36px] w-auto h-auto">
-                                    <img src="/icons/Save.svg" alt="" />
-                                </div>
-                                <div className="max-w-[41px] max-h-[36px] w-auto h-auto">
+                        </div>
+                        <div className="max-w-[77px] gap-[10px]  flex items-center max-h-[45px] w-auto h-auto">
+                            <div className="max-w-[36px] max-h-[36px] w-auto h-auto">
+                                <img src="/icons/Save.svg" alt="" />
+                            </div>
+                            <div className="max-w-[41px] max-h-[36px] w-auto h-auto">
                                     Save
-                                </div>
                             </div>
+                        </div>
                     </div>
                 </div>
                 <hr  className="w-full bg-gray-50 opacity-15 h-[1px] "/>
                 <div className="w-auto pl-5 max-w-[1000px] h-auto max-h-[144px] mt-2">
-                    <div className="w-[226px] h-[24px]">
+                    <div className="w-[226px] flex gap-3 h-[34px]">
                         <p className="font-bold text-xl text-white">266 Comments</p>
+                        <button onClick={commentTovideo} className="bg-green-500 px-3 text-white py-1 rounded-2xl inline">submit</button>
                     </div>
                     <div className="w-[1000px] items-center   mt-4 flex gap-4 h-[60px] ">
                         <div>
                             <img className="h-[35px] w-[35px] rounded-full" src={ownerD.avatar} alt="" />
                         </div>
                         <div className="w-full h-auto text-wrap">
-                            <input className="text-white text-wrap outline-0 w-full caret-white" type="text" placeholder="add a public comment ..."></input>
+                            <div className="w-full h-full">
+                                <input ref={CommentRef} className="text-white text-wrap outline-0 w-[70%] caret-white" type="text" placeholder="add a public comment ..."></input>
+                            </div>
                             <hr  className="w-full bg-gray-50 opacity-15 h-[1px] "/>
                         </div>
                     </div>
                 </div>
                 <hr  className="w-full bg-gray-50 opacity-15 h-[1px] "/>
-                <Comments/>
-                <Comments/>
-                <Comments/>
-                <Comments/>
+                
+               {
+                comments.map((comment)=>(
+                    <Comments avatar={comment.ownerDetails.avatar} username={comment.ownerDetails.username} Comment={comment.content} />
+                ))
+               }
             </div>
         </div>
         <div className="w-[520px] scrollbar-hide  rounded-2xl min-h-[300px]">
             <div className="w-full flex justify-start items-center h-[5%] mb-3 rounded-t-2xl">
-                <b className="text-white text-lg bg-[#1b1a1a] py-2 px-6 rounded-2xl">from Messi</b>
+                <b className="text-white text-lg bg-[#1b1a1a] py-2 px-6 rounded-2xl">from  {ownerD.username}</b>
             </div>
             <div className="w-full h-[90%] overflow-y-auto scrollbar-hide">
                 <div className="w-full min-h-[500px]"> 
